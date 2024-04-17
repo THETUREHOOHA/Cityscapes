@@ -22,7 +22,7 @@ from multiprocessing import Pool
 # Image processing
 # Check if PIL is actually Pillow as expected
 try:
-    from PIL import PILLOW_VERSION
+    from PIL import __version__
 except:
     print("Please install the module 'Pillow' for image processing, e.g.")
     print("pip install pillow")
@@ -61,14 +61,14 @@ def printError(message):
     sys.exit(-1)
 
 # The path that masks save to("train/val")
-Maskdir = "../../../data/gtFine/val"
+Maskdir = "/content/drive/MyDrive/data/cityscapes/for_maskrcnn/try/new"
 
 # The json files path("train/val")
-jsondir = "../../../Json_files/val"
+jsondir = "/content/drive/MyDrive/data/cityscapes/for_maskrcnn/try/json"
 jsonfiles = os.listdir(jsondir)
 
 # Convert the given annotation to a label image
-def createLabelImage(inJson, annotation, encoding, outline=None):
+def createLabelImage(inJson, annotation, encoding, counter, outline=None):
     # the size of the image
     size = (annotation.imgWidth, annotation.imgHeight)
 
@@ -84,7 +84,39 @@ def createLabelImage(inJson, annotation, encoding, outline=None):
         return None
 
     # choose the classes that you want to make the masks
-    mask_list = ["car", "truck", "bus", "train", "motorcycle", "bicycle"]
+    mask_list = mask_list = [
+    
+
+    "static",
+    "dynamic",
+    "ground",
+    "road",
+    "sidewalk",
+    "parking",
+    "rail track",
+    "building",
+    "wall",
+    "fence",
+    "guard rail",
+    "bridge",
+    "tunnel",
+    "pole",
+    "polegroup",
+    "traffic light",
+    "traffic sign",
+    "vegetation",
+    "terrain",
+    "sky",
+    "person",
+    "rider",
+    "car",
+    "truck",
+    "bus",
+    "caravan",
+    "trailer",
+    "train",
+    "motorcycle",
+    "bicycle"]
 
     # make a dir to save the masks
     mask_dir = os.path.join(Maskdir, os.path.splitext(inJson)[0])
@@ -146,6 +178,9 @@ def createLabelImage(inJson, annotation, encoding, outline=None):
             # save photo
             # the parameter 'val' is the corresponding trainId of the mask but not the validation set
             labelImg.save(os.path.join(mask_dir, "{}_{}.png".format(val, counter)))
+            counter += 1  # Increment the counter for each object processed
+    return counter
+            
 
 
 # A method that does all the work
@@ -195,22 +230,45 @@ def createLabelImage(inJson, annotation, encoding, outline=None):
 
 
 # multiprocess
-def target(jsondir, inJson):
+# def target(jsondir, inJson):
+#     annotation = Annotation()
+#     annotation.fromJsonFile(os.path.join(jsondir, inJson))
+#     createLabelImage(inJson, annotation, "trainIds")
+def target(jsondir, inJson, counter):
     annotation = Annotation()
     annotation.fromJsonFile(os.path.join(jsondir, inJson))
-    createLabelImage(inJson, annotation, "trainIds")
+    # Pass the counter to createLabelImage and update it
+    updated_counter = createLabelImage(inJson, annotation, "trainIds", counter)
+    return updated_counter
 
 # call the main method
+# call the main method
 if __name__ == "__main__":
-    # main(sys.argv[1:])
     counter = 0
     pool = Pool(processes=6)
+    results = []  # To store results of async calls
     for jsonfile in jsonfiles:
         inJson = jsonfile
-        _ = pool.apply_async(target, args=(jsondir, inJson))
-        print("successfully draw masks" + str(counter + 1))
-        counter += 1
+        result = pool.apply_async(target, args=(jsondir, inJson, counter))
+        results.append(result)
+    
+    # Wait for all async calls to finish and update the counter
+    for result in results:
+        counter = result.get()  # Get the updated counter from each process
 
     pool.close()
     pool.join()
     print(counter)
+# if __name__ == "__main__":
+#     # main(sys.argv[1:])
+#     counter = 0
+#     pool = Pool(processes=6)
+#     for jsonfile in jsonfiles:
+#         inJson = jsonfile
+#         _ = pool.apply_async(target, args=(jsondir, inJson))
+#         print("successfully draw masks" + str(counter + 1))
+#         counter += 1
+
+#     pool.close()
+#     pool.join()
+#     print(counter)
